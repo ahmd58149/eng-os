@@ -1,0 +1,943 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width,initial-scale=1" />
+<title>ENG-OS | Elite Planner — Colors & Calendar (Picker Button)</title>
+
+<script src="https://cdn.tailwindcss.com"></script>
+<link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+
+<style>
+:root { --main-bg: #0b1120; --muted: #94a3b8; --glass-border: rgba(255,255,255,0.04); }
+html,body { height:100%; }
+body{
+  font-family: 'Cairo', sans-serif;
+  background: var(--main-bg);
+  color: #e2e8f0;
+  -webkit-font-smoothing:antialiased;
+  -moz-osx-font-smoothing:grayscale;
+  overflow-x:hidden;
+  padding-bottom:4rem;
+}
+
+/* Glass / cards */
+.glass{
+  background: rgba(30,41,59,0.42);
+  backdrop-filter: blur(14px);
+  border: 1px solid var(--glass-border);
+}
+.task-card{
+  min-height: 190px;
+  display:flex;
+  flex-direction:column;
+  justify-content:space-between;
+  padding:16px;
+  border-radius: 1.8rem;
+  transition:.28s ease;
+}
+.task-card:hover{ transform:translateY(-6px); box-shadow: 0 10px 30px rgba(0,0,0,0.5); }
+
+@media (max-width:640px){
+  .task-card{
+    min-height: 170px;
+    padding:14px;
+  }
+}
+
+/* chips/buttons */
+.cat-btn{ filter:grayscale(1); opacity:.45; transition:.28s; cursor:pointer; padding:6px 8px; border-radius:12px; display:inline-block; text-align:center;}
+.cat-btn.active{ filter:none; opacity:1; transform:scale(1.06); background: rgba(99,102,241,0.08); }
+
+.sub-chip{
+  background: rgba(255,255,255,0.03);
+  border: 1px solid rgba(255,255,255,0.05);
+  padding:8px 10px;
+  border-radius: 12px;
+  font-size: 12px;
+  color: var(--muted);
+  cursor:pointer;
+  text-align:center;
+}
+.sub-chip.selected{
+  background: rgba(99,102,241,0.18);
+  border-color: #6366f1;
+  color: #fff;
+  box-shadow: 0 6px 18px rgba(99,102,241,0.12);
+}
+
+/* progress */
+.progress{ height:7px; border-radius:999px; background: rgba(255,255,255,0.06); overflow:hidden; }
+.progress-bar{ height:100%; background: linear-gradient(90deg,#6366f1,#22c55e); transition: width .6s ease; }
+
+/* misc visuals */
+.time-badge{ color:#f8fafc; text-shadow:0 0 12px rgba(99,102,241,0.28); font-variant-numeric: tabular-nums; }
+.small-muted{ color: #94a3b8; font-size: 11px; }
+
+.pomodoro-modal{
+  position: fixed; inset: 0; display:flex; align-items:center; justify-content:center;
+  background: rgba(2,6,23,0.6); z-index:40; padding: 2rem;
+}
+.pomo-card{ width:100%; max-width:480px; border-radius:20px; padding:18px; }
+.hidden{ display:none; }
+.btn-ghost{ background: rgba(255,255,255,0.03); padding:8px 12px; border-radius:10px; cursor:pointer; border:1px solid rgba(255,255,255,0.04); }
+.btn-primary{ background:#6366f1; padding:10px 14px; border-radius:12px; color:white; cursor:pointer; font-weight:700; }
+
+/* card title */
+.task-title{ text-align:center; letter-spacing:.2px; }
+
+/* border utilities used dynamically */
+.border-indigo-500\/20 { border-color: rgba(99,102,241,0.2); }
+.border-red-600 { border-color: #ef4444; }
+.border-yellow-500 { border-color: #f59e0b; }
+.border-emerald-500 { border-color: #16a34a; }
+
+.empty-state { padding: 2rem; text-align:center; color:var(--muted); }
+
+/* Calendar button style */
+.date-picker-btn {
+  position: absolute;
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width:40px;
+  height:40px;
+  border-radius:10px;
+  background: rgba(255,255,255,0.04);
+  border: 1px solid rgba(255,255,255,0.06);
+  cursor: pointer;
+  transition: transform .12s ease, background .12s ease;
+  font-size:18px;
+}
+.date-picker-btn:hover { transform: translateY(-50%) scale(1.04); background: rgba(255,255,255,0.06); }
+.date-picker-btn:active { transform: translateY(-50%) scale(.98); }
+
+/* Toasts */
+#toast-container{
+  position: fixed;
+  left: 1rem;
+  right: 1rem;
+  bottom: 2.5rem;
+  display:flex;
+  flex-direction:column;
+  gap:8px;
+  z-index:60;
+  pointer-events: none;
+  align-items: center;
+}
+.toast {
+  pointer-events: auto;
+  min-width: 200px;
+  max-width: 420px;
+  background: rgba(255,255,255,0.06);
+  color: white;
+  padding: 10px 14px;
+  border-radius: 12px;
+  box-shadow: 0 8px 30px rgba(0,0,0,0.6);
+  display:flex;
+  gap:10px;
+  align-items:center;
+  justify-content:space-between;
+  border: 1px solid rgba(255,255,255,0.04);
+  font-weight:700;
+}
+.toast.success { border-left: 4px solid #22c55e; }
+.toast.warn { border-left: 4px solid #f59e0b; }
+.toast.info { border-left: 4px solid #6366f1; }
+.toast.error { border-left: 4px solid #ef4444; }
+.toast .msg { flex:1; text-align:center; font-weight:700; }
+.toast .close { cursor:pointer; opacity:.8; padding-left:8px; }
+
+/* --- Header layout adjustments --- */
+/* Make header slightly rearranged and more responsive.
+   Put clear back-link as an anchored button top-right for easy access.
+*/
+.header-wrap {
+  display:grid;
+  grid-template-columns: 1fr auto 1fr;
+  align-items:center;
+  gap:12px;
+  margin-bottom: 1.5rem;
+}
+.header-left, .header-center, .header-right { display:flex; align-items:center; gap:8px; }
+
+.header-left { justify-content:flex-start; }
+.header-center { justify-content:center; flex-direction:column; text-align:center;}
+.header-right { justify-content:flex-end; flex-direction:column; text-align:right; }
+
+/* Back link (prominent and fixed for quick access) */
+.back-link{
+  position: fixed;
+  top: 14px;
+  right: 14px;            /* placed on the right (comfortable for RTL) */
+  z-index: 9999;
+  display:flex;
+  gap:8px;
+  align-items:center;
+  background: linear-gradient(180deg, rgba(255,255,255,0.03), rgba(255,255,255,0.02));
+  color:#fff;
+  padding:8px 12px;
+  border-radius:12px;
+  border:1px solid rgba(255,255,255,0.06);
+  text-decoration:none;
+  font-weight:800;
+  font-size:13px;
+  backdrop-filter: blur(6px);
+  box-shadow:0 8px 26px rgba(6,18,34,0.6);
+}
+
+/* a second slightly smaller back inside header for larger screens (keeps consistent feel) */
+.header-internal-back {
+  display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:10px;
+  background: rgba(255,255,255,0.03); border:1px solid rgba(255,255,255,0.04); color:#fff; text-decoration:none; font-weight:700;
+}
+.header-internal-back:hover{ transform:translateY(-2px); }
+
+/* keep header compact on small screens */
+@media (max-width:720px){
+  .header-wrap { grid-template-columns: 1fr; row-gap:10px; }
+  .header-right { justify-content:space-between; flex-direction:row; }
+  .back-link{ top:10px; right:10px; padding:7px 10px; font-size:13px; }
+}
+
+/* small helper */
+.hidden-sm { display:none; }
+@media (min-width:721px){ .hidden-lg { display:none; } .hidden-sm{ display:inline-flex; } }
+
+</style>
+</head>
+
+<body class="p-5 pb-24">
+
+<!-- prominent fixed back link (linked to index.html) -->
+<a class="back-link" href="index.html" title="الرجوع إلى الرئيسية">⬅️ &nbsp;<span>الرئيسية</span></a>
+
+<!-- Header (rearranged) -->
+<header class="header-wrap">
+  <div class="header-left">
+    <!-- internal back (optional, visible on larger screens) -->
+    <a class="header-internal-back hidden-sm" href="index.html" title="الرجوع إلى الرئيسية">⬅️ الرئيسية</a>
+  </div>
+
+  <div class="header-center">
+    <h1 class="text-lg font-black italic tracking-tight" style="margin:0;">ENG-OS</h1>
+    <div class="text-[12px] text-indigo-300 mt-1 font-medium">Task Manager</div>
+    <div class="w-10 h-[2px] bg-indigo-500 mx-auto mt-2 rounded"></div>
+  </div>
+
+  <div class="header-right">
+    <div class="flex items-center gap-3">
+      <button id="toggle-archive-btn" class="btn-ghost text-[11px] font-black">📦 أرشيف</button>
+      <!-- small reload kept but less prominent -->
+      <button id="reload-btn" class="glass w-10 h-10 rounded-xl flex items-center justify-center active:scale-95" title="إعادة تحميل الصفحة">🔁</button>
+    </div>
+
+    <div style="margin-top:8px; text-align:right;">
+      <div id="live-time" class="text-xl font-black time-badge">00:00:00</div>
+      <div id="live-date" class="text-[10px] uppercase text-indigo-400 mt-1">FRIDAY, 6 FEB</div>
+    </div>
+  </div>
+</header>
+
+<!-- INPUT PANEL -->
+<div class="glass p-6 rounded-[2rem] mb-6 border-b-4 border-indigo-600 shadow-xl">
+  <input id="task-name" placeholder="اسم المهمة القادمة..." class="w-full bg-white/5 p-4 rounded-2xl mb-4 text-white font-bold outline-none border border-white/6 text-sm text-center">
+
+  <div class="flex justify-around mb-4">
+    <div onclick="setCat('study', this)" class="cat-btn active" data-cat="study">📚<div class="text-[10px] font-black">مذاكرة</div></div>
+    <div onclick="setCat('work', this)" class="cat-btn" data-cat="work">💼<div class="text-[10px] font-black">شغل</div></div>
+    <div onclick="setCat('other', this)" class="cat-btn" data-cat="other">✨<div class="text-[10px] font-black">أخرى</div></div>
+  </div>
+
+  <div id="sub-select-wrapper" class="mb-4">
+    <p class="text-[10px] font-black text-indigo-400 mb-3 text-center uppercase tracking-widest">اختر المادة / النوع</p>
+    <div class="grid grid-cols-2 gap-2">
+      <div onclick="setSub('📐 رياضيات 2', this)" class="sub-chip">📐 رياضيات 2</div>
+      <div onclick="setSub('⚙️ ميكانيكا 2', this)" class="sub-chip">⚙️ ميكانيكا 2</div>
+      <div onclick="setSub('⚡ فيزياء 2', this)" class="sub-chip">⚡ فيزياء 2</div>
+      <div onclick="setSub('✍️ رسم هندسي', this)" class="sub-chip">✍️ رسم هندسي</div>
+      <div onclick="setSub('🛠️ تصنيع', this)" class="sub-chip">🛠️ تصنيع</div>
+      <div onclick="setSub('📜 تاريخ هندسة', this)" class="sub-chip">📜 تاريخ هندسة</div>
+      <div onclick="setSub('🔤 لغة فنية', this)" class="sub-chip">🔤 لغة فنية</div>
+      <div onclick="setSub('عام', this)" class="sub-chip">عام</div>
+    </div>
+  </div>
+
+  <div class="relative mb-6">
+    <input
+      id="task-date"
+      type="datetime-local"
+      class="w-full bg-white/5 p-4 pr-16 rounded-2xl text-sm outline-none
+             border border-white/5 focus:border-indigo-500 transition-all">
+    <!-- clickable button that opens the picker -->
+    <button id="open-date-picker-btn" class="date-picker-btn" title="فتح اختيار التاريخ">
+      📅
+    </button>
+  </div>
+
+  <div class="flex gap-3">
+    <button onclick="addTask()" class="btn-primary w-full">حفظ في الخطة 🚀</button>
+    <button onclick="clearAllData()" class="btn-ghost">مسح الكل</button>
+  </div>
+</div>
+
+<!-- TASKS GRID -->
+<h3 class="text-white font-black mb-4 px-2 flex items-center gap-2">
+  <span class="w-2 h-5 bg-indigo-500 rounded-full"></span> المهام الجارية
+</h3>
+
+<!-- responsive grid: 1 col on small screens, 2 on sm+ -->
+<div id="tasks-grid" class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-8"></div>
+
+<!-- ARCHIVE (shows ALL items now) -->
+<div id="archive-panel" class="glass p-4 rounded-2xl hidden max-w-2xl mx-auto">
+  <h4 class="font-black mb-3">سجل الإنجازات (الكل)</h4>
+  <div id="archive-container" class="space-y-2"></div>
+</div>
+
+<!-- POMODORO MODAL -->
+<div id="pomo-modal" class="hidden pomodoro-modal">
+  <div class="glass p-5 pomo-card rounded-2xl">
+    <div class="flex justify-between items-start">
+      <div>
+        <div id="pomo-task-name" class="font-black text-lg"></div>
+        <div id="pomo-sub" class="small-muted text-sm"></div>
+      </div>
+      <button onclick="closePomo()" class="btn-ghost">✕</button>
+    </div>
+    <div class="mt-4">
+      <!-- Duration presets and custom input -->
+      <div class="flex justify-center gap-2">
+        <button onclick="setPomoMinutes(25)" class="btn-ghost">25د</button>
+        <button onclick="setPomoMinutes(30)" class="btn-ghost">30د</button>
+        <button onclick="setPomoMinutes(45)" class="btn-ghost">45د</button>
+      </div>
+      <input id="pomo-custom" type="number" min="5" max="180" placeholder="مدة مخصصة (دقيقة)" class="w-full mt-3 bg-white/5 rounded-xl p-2 text-center text-sm outline-none">
+    </div>
+
+    <div class="mt-6 text-center">
+      <div id="pomo-timer" class="text-4xl font-black">25:00</div>
+      <div class="small-muted mt-2">وقت تركيز Pomodoro</div>
+      <div class="flex gap-3 justify-center mt-5">
+        <button onclick="togglePomo()" id="pomo-start-btn" class="btn-primary">ابدأ</button>
+        <button onclick="stopPomoTimer()" id="pomo-pause-btn" class="btn-ghost">إيقاف/إيقاف مؤقت</button>
+        <button onclick="resetPomoTimer()" class="btn-ghost">إعادة ضبط</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<!-- Toast container -->
+<div id="toast-container" aria-live="polite"></div>
+
+<script>
+/* ============================
+   This script section is identical to your original t1.html
+   — I only adjusted the header wiring (reload -> function) and back-links above.
+   No schedule/task data or logic was changed.
+   ============================ */
+
+/* ============================
+   State & Storage
+   ============================ */
+const TASKS_KEY = 'eng_tasks_v_final';
+const ARCHIVE_KEY = 'eng_archive_v_final';
+
+let selectedCat = 'study';
+let selectedSub = '';
+let tasks = [];
+let archive = [];
+
+/* Map to store references to specific DOM elements for each task */
+const taskElements = new Map();
+
+let pomoState = {
+  active: false,
+  intervalId: null,
+  remainingSec: 25 * 60,
+  defaultMinutes: 25,
+  targetTaskId: null,
+  startTimestamp: null
+};
+
+/* DOM refs */
+const tasksGrid = document.getElementById('tasks-grid');
+const archiveContainer = document.getElementById('archive-container');
+const archivePanel = document.getElementById('archive-panel');
+const toggleArchiveBtn = document.getElementById('toggle-archive-btn');
+const pomoModal = document.getElementById('pomo-modal');
+const pomoTaskName = document.getElementById('pomo-task-name');
+const pomoSub = document.getElementById('pomo-sub');
+const pomoTimerDisplay = document.getElementById('pomo-timer');
+const pomoStartBtn = document.getElementById('pomo-start-btn');
+const pomoCustomInput = document.getElementById('pomo-custom');
+const toastContainer = document.getElementById('toast-container');
+const dateInput = document.getElementById('task-date');
+const openDatePickerBtn = document.getElementById('open-date-picker-btn');
+
+const reloadBtn = document.getElementById('reload-btn');
+
+/* ============================
+   Init
+   ============================ */
+function loadData() {
+  try {
+    tasks = JSON.parse(localStorage.getItem(TASKS_KEY)) || [];
+    archive = JSON.parse(localStorage.getItem(ARCHIVE_KEY)) || [];
+  } catch (e) {
+    tasks = []; archive = [];
+  }
+}
+function saveData() {
+  localStorage.setItem(TASKS_KEY, JSON.stringify(tasks));
+  localStorage.setItem(ARCHIVE_KEY, JSON.stringify(archive));
+}
+
+/* Utilities & other functions kept unchanged (escapeHtml, uid, date formatting, toasts etc.) */
+
+function uid() { return Date.now() + Math.floor(Math.random()*999); }
+function clamp(v, a=0, b=100){ return Math.max(a, Math.min(b, v)); }
+
+function playBeep(){
+  try {
+    const ctx = new (window.AudioContext || window.webkitAudioContext)();
+    const o = ctx.createOscillator();
+    const g = ctx.createGain();
+    o.type = 'sine';
+    o.frequency.value = 880;
+    o.connect(g);
+    g.connect(ctx.destination);
+    g.gain.setValueAtTime(0.0001, ctx.currentTime);
+    g.gain.exponentialRampToValueAtTime(0.05, ctx.currentTime + 0.01);
+    o.start();
+    g.gain.exponentialRampToValueAtTime(0.0001, ctx.currentTime + 0.25);
+    setTimeout(()=>{ try{ o.stop(); ctx.close(); }catch(e){} }, 300);
+  } catch(e){}
+}
+
+function showToast(message, type = 'info', ttl = 3500){
+  const toast = document.createElement('div');
+  toast.className = `toast ${type}`;
+  toast.innerHTML = `<div class="msg">${escapeHtml(message)}</div><div class="close">✕</div>`;
+  toastContainer.appendChild(toast);
+  if(type === 'success' || type === 'warn' || type === 'error') playBeep();
+  toast.querySelector('.close').addEventListener('click', ()=> {
+    if(toast.parentNode) toast.parentNode.removeChild(toast);
+  });
+  setTimeout(()=> { if(toast && toast.parentNode) toast.parentNode.removeChild(toast); }, ttl);
+}
+
+function formatCountdownMs(ms){
+  if(ms <= 0) return '⚠️ انتهى الوقت';
+  const s = Math.floor(ms/1000);
+  const days = Math.floor(s / 86400);
+  const hours = Math.floor((s % 86400) / 3600);
+  const mins = Math.floor((s % 3600) / 60);
+  const secs = s % 60;
+  if(days > 0) return `باقي ${days} يوم ${hours} س ${mins} د`;
+  if(hours > 0) return `باقي ${hours} س ${mins} د ${secs} ث`;
+  if(mins > 0) return `باقي ${mins} د ${secs} ث`;
+  return `باقي ${secs} ث`;
+}
+
+function formatDateShort(dt){
+  try {
+    const d = new Date(dt);
+    return d.toLocaleString('en-US', { weekday:'short', day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' }).toUpperCase();
+  } catch { return dt; }
+}
+
+/* Category & Sub selection */
+function setCat(cat, el){
+  selectedCat = cat;
+  document.querySelectorAll('.cat-btn').forEach(b=>b.classList.remove('active'));
+  if(el) el.classList.add('active');
+  document.getElementById('sub-select-wrapper').style.display = (cat === 'study') ? 'block' : 'none';
+  if(cat !== 'study') {
+    selectedSub = '';
+    document.querySelectorAll('.sub-chip').forEach(c=>c.classList.remove('selected'));
+  }
+}
+
+function setSub(sub, el){
+  selectedSub = sub;
+  document.querySelectorAll('.sub-chip').forEach(c=>c.classList.remove('selected'));
+  if(el) el.classList.add('selected');
+}
+
+/* Add / Delete / Complete */
+function addTask(){
+  const nameEl = document.getElementById('task-name');
+  const dateEl = document.getElementById('task-date');
+  const name = (nameEl.value || '').trim();
+  const dateVal = dateEl.value;
+
+  if(!name || !dateVal){
+    showToast('اكمل اسم المهمة والوقت!', 'warn');
+    return;
+  }
+  if(selectedCat === 'study' && !selectedSub){
+    showToast('حدد المادة أولا!', 'warn');
+    return;
+  }
+
+  const createdAt = new Date().toISOString();
+  const task = {
+    id: uid(),
+    name,
+    date: dateVal,
+    createdAt,
+    cat: selectedCat,
+    sub: selectedSub || (selectedCat === 'work' ? 'شغل' : 'عام'),
+    pomoSessions: 0,
+    pomoTotalMinutes: 0
+  };
+  tasks.push(task);
+  saveData();
+  nameEl.value = '';
+  dateEl.value = '';
+  selectedSub = '';
+  document.querySelectorAll('.sub-chip').forEach(c=>c.classList.remove('selected'));
+  appendTaskCard(task);
+  updateEmptyState();
+  showToast('تمت إضافة المهمة ✔️', 'success');
+}
+
+function deleteTask(id){
+  if(!confirm('هل تريد حذف المهمة؟')) return;
+  tasks = tasks.filter(t => t.id !== id);
+  saveData();
+  removeTaskCard(id);
+  updateEmptyState();
+  showToast('المهمة محذوفة', 'info');
+}
+
+function completeTask(id){
+  const idx = tasks.findIndex(t=>t.id===id);
+  if(idx === -1) return;
+  const t = tasks[idx];
+  const done = {...t, doneAt: new Date().toISOString()};
+  archive.push(done);
+  if(archive.length > 1000) archive = archive.slice(-1000);
+  tasks.splice(idx,1);
+  saveData();
+  removeTaskCard(id);
+  renderArchive();
+  updateEmptyState();
+  showToast('مبروك! تم إتمام المهمة 🎉', 'success');
+}
+
+/* Progress & rendering functions (kept identical) */
+function calcProgressPercent(task){
+  try {
+    const created = new Date(task.createdAt).getTime();
+    const deadline = new Date(task.date).getTime();
+    const now = Date.now();
+    if(deadline <= created) return 100;
+    if(now <= created) return 0;
+    const p = ((now - created) / (deadline - created)) * 100;
+    return clamp(Math.round(p), 0, 100);
+  } catch {
+    return 0;
+  }
+}
+
+function createTaskCardNode(t){
+  const container = document.createElement('div');
+  container.className = 'glass task-card border-b-4 border-indigo-500/20';
+  container.setAttribute('data-task-id', t.id);
+
+  const inner = `
+    <div class="flex justify-between items-start">
+      <div style="flex:1">
+        <div class="text-[10px] font-black text-indigo-400 mb-2">${escapeHtml(t.sub)}</div>
+        <div class="text-center my-2">
+          <div class="task-title font-black text-[14px] leading-snug">
+            ${escapeHtml(t.name)}
+          </div>
+        </div>
+        <div class="small-muted text-[11px] flex items-center justify-center gap-2">
+          <span class="cal-icon">📅</span>
+          <span>${formatDateShort(t.date)}</span>
+        </div>
+      </div>
+      <div class="text-left">
+        <button class="text-white/30 text-xs" title="حذف" data-action="delete">✕</button>
+      </div>
+    </div>
+
+    <div>
+      <div class="progress mt-3 mb-2">
+        <div class="progress-bar" style="width:0%"></div>
+      </div>
+      <div class="flex justify-between items-center">
+        <div class="text-[12px] font-bold countdown">--</div>
+        <div class="text-[11px] small-muted percent">0%</div>
+      </div>
+
+      <div class="mt-2 small-muted text-[11px] text-center pomo-stats">🍅 0 جلسات • 0 د</div>
+
+      <div class="mt-3 grid grid-cols-2 gap-2">
+        <button class="btn-primary w-full text-[12px]" data-action="complete">DONE ✓</button>
+        <button class="btn-ghost w-full text-[12px]" data-action="pomo">🍅 Pomodoro</button>
+      </div>
+    </div>
+  `;
+  container.innerHTML = inner;
+
+  container.querySelector('[data-action="delete"]').addEventListener('click', ()=> deleteTask(t.id));
+  container.querySelector('[data-action="complete"]').addEventListener('click', ()=> completeTask(t.id));
+  container.querySelector('[data-action="pomo"]').addEventListener('click', ()=> openPomo(t.id));
+
+  const countdownEl = container.querySelector('.countdown');
+  const progressBarEl = container.querySelector('.progress-bar');
+  const percentEl = container.querySelector('.percent');
+  const statsEl = container.querySelector('.pomo-stats');
+
+  taskElements.set(t.id, {
+    container,
+    countdownEl,
+    progressBarEl,
+    percentEl,
+    statsEl,
+    prev: {
+      countdown: null,
+      percent: null,
+      border: null,
+      statsText: null
+    }
+  });
+
+  updateSingleTaskElement(t);
+
+  return container;
+}
+
+function appendTaskCard(task){
+  const node = createTaskCardNode(task);
+  const children = Array.from(tasksGrid.children);
+  const taskDate = new Date(task.date).getTime();
+  let inserted = false;
+  for(let i=0;i<children.length;i++){
+    const child = children[i];
+    const id = child.getAttribute('data-task-id');
+    if(!id) continue;
+    const other = tasks.find(x=>String(x.id)===String(id));
+    if(!other) continue;
+    if(new Date(other.date).getTime() > taskDate){
+      tasksGrid.insertBefore(node, child);
+      inserted = true;
+      break;
+    }
+  }
+  if(!inserted) tasksGrid.appendChild(node);
+  renderArchive();
+}
+
+function removeTaskCard(id){
+  const refs = taskElements.get(id);
+  if(refs && refs.container && refs.container.parentNode){
+    refs.container.parentNode.removeChild(refs.container);
+  } else {
+    const el = tasksGrid.querySelector(`[data-task-id="${id}"]`);
+    if(el && el.parentNode) el.parentNode.removeChild(el);
+  }
+  taskElements.delete(id);
+}
+
+function renderAllTasks(){
+  taskElements.clear();
+  tasksGrid.innerHTML = '';
+  if(tasks.length === 0){
+    tasksGrid.innerHTML = `<div class="col-span-2 empty-state">مافيش مهام حالياً — اضغط "حفظ" لإضافة مهمة جديدة</div>`;
+    return;
+  }
+  tasks.sort((a,b)=> new Date(a.date) - new Date(b.date));
+  tasks.forEach(t=>{
+    const node = createTaskCardNode(t);
+    tasksGrid.appendChild(node);
+  });
+  updateEmptyState();
+}
+
+function renderArchive(){
+  const all = archive.slice().reverse();
+  archiveContainer.innerHTML = all.map(a=>`
+    <div class="glass p-3 rounded-2xl flex justify-between items-center opacity-90">
+      <div>
+        <div class="font-black text-[12px]">✓ ${escapeHtml(a.name)}</div>
+        <div class="text-[10px] small-muted">${a.sub} — ${formatDateShort(a.doneAt)}</div>
+      </div>
+      <div class="text-[11px] small-muted">${a.cat}</div>
+    </div>
+  `).join('');
+}
+
+function updateEmptyState(){
+  if(tasks.length === 0){
+    tasksGrid.innerHTML = `<div class="col-span-2 empty-state">مافيش مهام حالياً — اضغط "حفظ" لإضافة مهمة جديدة</div>`;
+  } else {
+    if(!tasksGrid.querySelector('[data-task-id]')){
+      renderAllTasks();
+    }
+  }
+}
+
+function updateSingleTaskElement(task){
+  const refs = taskElements.get(task.id);
+  if(!refs) return;
+  const diff = new Date(task.date) - new Date();
+  const countdown = formatCountdownMs(diff);
+  const progressPercent = calcProgressPercent(task);
+
+  const hoursLeft = diff / (1000 * 60 * 60);
+  let borderClass = 'border-indigo-500/20';
+  if(hoursLeft > 24 * 5) {
+    borderClass = 'border-emerald-500';
+  } else if(hoursLeft > 36) {
+    borderClass = 'border-yellow-500';
+  } else {
+    borderClass = 'border-red-600';
+  }
+
+  const statsText = `🍅 ${task.pomoSessions || 0} جلسات • ${task.pomoTotalMinutes || 0} د`;
+
+  if(refs.prev.countdown !== countdown){
+    refs.countdownEl.innerText = countdown;
+    refs.prev.countdown = countdown;
+  }
+  if(refs.prev.percent !== progressPercent){
+    refs.progressBarEl.style.width = `${progressPercent}%`;
+    refs.percentEl.innerText = `${progressPercent}%`;
+    refs.prev.percent = progressPercent;
+  }
+  if(refs.prev.border !== borderClass){
+    refs.container.classList.remove('border-red-600','border-orange-400','border-indigo-500/20','border-yellow-500','border-emerald-500');
+    refs.container.classList.add(borderClass);
+    refs.prev.border = borderClass;
+  }
+  if(refs.prev.statsText !== statsText){
+    refs.statsEl.innerText = statsText;
+    refs.prev.statsText = statsText;
+  }
+}
+
+function updateTaskElements(){
+  for(const t of tasks){
+    if(!taskElements.has(t.id)){
+      appendTaskCard(t);
+    }
+    updateSingleTaskElement(t);
+  }
+  const existingIds = new Set(tasks.map(x=>String(x.id)));
+  for(const id of Array.from(taskElements.keys())){
+    if(!existingIds.has(String(id))){
+      removeTaskCard(id);
+    }
+  }
+}
+
+/* Clock & periodic update */
+function updateClockAndRefresh(){
+  const now = new Date();
+  document.getElementById('live-time').innerText = now.toLocaleTimeString('en-GB', {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  document.getElementById('live-date').innerText = now.toLocaleDateString('en-US',{weekday:'long',day:'numeric',month:'short'}).toUpperCase();
+  updateTaskElements();
+}
+setInterval(updateClockAndRefresh, 1000);
+
+/* Archive toggle & clear data */
+toggleArchiveBtn.addEventListener('click', () => {
+  archivePanel.classList.toggle('hidden');
+});
+
+function clearAllData(){
+  if(!confirm('متأكد؟ سيؤدي هذا لمسح كل المهام والأرشيف')) return;
+  tasks = [];
+  archive = [];
+  saveData();
+  taskElements.clear();
+  renderAllTasks();
+  renderArchive();
+  showToast('كل البيانات اتمسحت', 'info');
+}
+
+/* Pomodoro controls (kept same) */
+function openPomo(taskId){
+  const task = tasks.find(t=>t.id === taskId);
+  if(!task) {
+    showToast('المهمة غير موجودة', 'warn');
+    return;
+  }
+  pomoModal.classList.remove('hidden');
+  pomoTaskName.innerText = task.name;
+  pomoSub.innerText = task.sub + ' • ' + task.cat;
+  pomoState.targetTaskId = taskId;
+  pomoState.remainingSec = pomoState.defaultMinutes * 60;
+  updatePomoDisplay();
+  if(pomoCustomInput) pomoCustomInput.value = '';
+}
+
+function closePomo(){
+  stopPomoTimer();
+  pomoModal.classList.add('hidden');
+  pomoState.targetTaskId = null;
+}
+
+function updatePomoDisplay(){
+  const mm = Math.floor(pomoState.remainingSec / 60).toString().padStart(2,'0');
+  const ss = (pomoState.remainingSec % 60).toString().padStart(2,'0');
+  pomoTimerDisplay.innerText = `${mm}:${ss}`;
+  pomoStartBtn.innerText = pomoState.active ? 'استمر' : 'ابدأ';
+}
+
+function togglePomo(){
+  if(pomoState.active) {
+    stopPomoTimer();
+  } else {
+    startPomoTimer();
+  }
+}
+
+function startPomoTimer(){
+  if(pomoState.active) return;
+  pomoState.active = true;
+  pomoState.startTimestamp = Date.now();
+  if(pomoState.intervalId) clearInterval(pomoState.intervalId);
+  pomoState.intervalId = setInterval(()=>{
+    pomoState.remainingSec--;
+    if(pomoState.remainingSec <= 0){
+      const targetId = pomoState.targetTaskId;
+      stopPomoTimer();
+      let elapsedMin = pomoState.defaultMinutes;
+      if(pomoState.startTimestamp){
+        elapsedMin = Math.max(1, Math.round((Date.now() - pomoState.startTimestamp) / 60000));
+      }
+      const task = tasks.find(t=>t.id === targetId);
+      if(task){
+        task.pomoSessions = (task.pomoSessions || 0) + 1;
+        task.pomoTotalMinutes = (task.pomoTotalMinutes || 0) + elapsedMin;
+        saveData();
+        updateSingleTaskElement(task);
+      }
+      try {
+        if("Notification" in window && Notification.permission === "granted"){
+          new Notification('Pomodoro انتهى', { body: pomoTaskName.innerText });
+        } else if("Notification" in window && Notification.permission !== "denied"){
+          Notification.requestPermission().then(p => { if(p==='granted') new Notification('Pomodoro انتهى', { body: pomoTaskName.innerText }); });
+        }
+      } catch(e){}
+      showToast('🍅 Pomodoro انتهى!', 'success');
+    }
+    updatePomoDisplay();
+  }, 1000);
+  updatePomoDisplay();
+}
+
+function stopPomoTimer(){
+  pomoState.active = false;
+  if(pomoState.intervalId) { clearInterval(pomoState.intervalId); pomoState.intervalId = null; }
+  pomoState.startTimestamp = null;
+  updatePomoDisplay();
+}
+
+function resetPomoTimer(){
+  const custom = parseInt((pomoCustomInput && pomoCustomInput.value) || '', 10);
+  if(!isNaN(custom) && custom >= 1) {
+    pomoState.defaultMinutes = custom;
+  }
+  pomoState.remainingSec = pomoState.defaultMinutes * 60;
+  stopPomoTimer();
+  updatePomoDisplay();
+  showToast('تمت إعادة ضبط Pomodoro', 'info');
+}
+
+function setPomoMinutes(min){
+  if(typeof min !== 'number' || min <= 0) return;
+  pomoState.defaultMinutes = min;
+  pomoState.remainingSec = min * 60;
+  if(pomoCustomInput) pomoCustomInput.value = '';
+  stopPomoTimer();
+  updatePomoDisplay();
+}
+
+if(pomoCustomInput){
+  pomoCustomInput.addEventListener('change', e=>{
+    const v = parseInt(e.target.value, 10);
+    if(!isNaN(v) && v >= 1){
+      pomoState.defaultMinutes = v;
+      pomoState.remainingSec = v * 60;
+      stopPomoTimer();
+      updatePomoDisplay();
+    }
+  });
+}
+
+/* Date picker wiring */
+(function wireDatePickerButton(){
+  if(!openDatePickerBtn || !dateInput) return;
+  openDatePickerBtn.addEventListener('click', (e) => {
+    e.preventDefault();
+    if(typeof dateInput.showPicker === 'function') {
+      try { dateInput.showPicker(); } catch(e){ dateInput.focus(); dateInput.click(); }
+      return;
+    }
+    dateInput.focus();
+    try { dateInput.click(); } catch(e){}
+  });
+
+  dateInput.addEventListener('click', () => {
+    if(typeof dateInput.showPicker === 'function') {
+      try { dateInput.showPicker(); } catch(e){}
+    }
+  });
+})();
+
+/* Safety: escape html */
+function escapeHtml(str){
+  if(!str) return '';
+  return String(str)
+    .replaceAll('&','&amp;')
+    .replaceAll('<','&lt;')
+    .replaceAll('>','&gt;')
+    .replaceAll('"','&quot;')
+    .replaceAll("'",'&#039;');
+}
+
+/* Hook up reload button to a gentle reload (same as before but explicit) */
+if(reloadBtn){
+  reloadBtn.addEventListener('click', ()=> {
+    // small visual feedback then reload
+    reloadBtn.animate([{ transform: 'scale(0.98)' }, { transform: 'scale(1)' }], { duration: 180 });
+    setTimeout(()=> location.reload(), 140);
+  });
+}
+
+/* Start */
+loadData();
+renderAllTasks();
+renderArchive();
+updateClockAndRefresh();
+
+/* Expose functions (as before) */
+window.setCat = setCat;
+window.setSub = setSub;
+window.addTask = addTask;
+window.deleteTask = deleteTask;
+window.completeTask = completeTask;
+window.toggleArchive = () => archivePanel.classList.toggle('hidden');
+window.openPomo = openPomo;
+window.closePomo = closePomo;
+window.startPomoTimer = startPomoTimer;
+window.stopPomoTimer = stopPomoTimer;
+window.resetPomoTimer = resetPomoTimer;
+window.togglePomo = togglePomo;
+window.setPomoMinutes = setPomoMinutes;
+window.clearAllData = clearAllData;
+
+</script>
+</body>
+</html>

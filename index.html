@@ -1,0 +1,610 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>ENG-OS | Pro Dashboard</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;600;700;900&display=swap" rel="stylesheet">
+    <link rel="manifest" href="manifest.json">
+
+    <style>
+        :root { --main-bg: #0f172a; --card-bg: rgba(30, 41, 59, 0.5); }
+        body { font-family: 'Cairo', sans-serif; background-color: var(--main-bg); color: #e2e8f0; -webkit-tap-highlight-color: transparent; }
+        .glass { background: var(--card-bg); backdrop-filter: blur(15px); border: 1px solid rgba(255,255,255,0.08); }
+        .tab-content { display: none; }
+        .tab-content.active { display: block; animation: fadeIn 0.36s ease; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(8px); } to { opacity: 1; transform: translateY(0); } }
+        input[type="range"] { -webkit-appearance: none; background: #1e293b; border-radius: 10px; height: 8px; }
+        input[type="range"]::-webkit-slider-thumb { -webkit-appearance: none; height: 22px; width: 22px; border-radius: 50%; background: #6366f1; cursor: pointer; box-shadow: 0 0 15px rgba(99, 102, 241, 0.4); border: 2px solid white; }
+        .badge { display:inline-block; padding:6px 10px; border-radius:999px; font-weight:800; font-size:11px; }
+        .badge-lecture { background:#0ea5a4; color:#042022; } /* محاضرة */
+        .badge-section { background:#60a5fa; color:#042044; } /* سكشن */
+        .badge-current { background:#16a34a; color:white; } /* الحالية */
+        .badge-next { background:#f59e0b; color:white; } /* التالية */
+        .task-badge { border-radius:999px; padding:6px 10px; font-weight:700; font-size:12px; }
+        .muted { color:#94a3b8; }
+        .small { font-size:11px; }
+        .table-item-current { box-shadow: 0 8px 30px rgba(34,197,94,0.06); border-left: 4px solid rgba(34,197,94,0.8); }
+        .table-item-next { box-shadow: 0 8px 30px rgba(245,158,11,0.06); border-left: 4px solid rgba(245,158,11,0.8); }
+        /* helper neutral badge */
+        .badge-neutral { background: #0f172a; color: #94a3b8; }
+    </style>
+    
+</head>
+<body class="pb-24">
+
+    <header class="flex justify-between items-center p-6 mt-2">
+        <div class="glass px-4 py-2 rounded-2xl border border-white/10">
+            <span id="live-time" class="text-indigo-400 font-black text-lg tracking-wider">00:00 PM</span>
+        </div>
+
+        <div class="text-center">
+            <h1 class="text-2xl font-black tracking-tighter text-white">ENG<span class="text-indigo-500">.OS</span></h1>
+        </div>
+
+        <div class="text-right glass px-4 py-2 rounded-2xl border border-white/10">
+            <p id="today-tag" class="text-white text-[11px] font-black leading-none">اليوم</p>
+            <p id="live-date" class="text-slate-500 text-[9px] font-bold mt-1">1 يناير</p>
+        </div>
+    </header>
+
+    <main class="px-5 space-y-6">
+
+        <!-- MAIN DASH (Now playing card) -->
+        <section id="tab-home" class="tab-content active space-y-6">
+            <div class="relative overflow-hidden bg-gradient-to-br from-indigo-600 to-violet-800 p-6 rounded-[2.5rem] shadow-xl">
+                <div class="relative z-10">
+                    <div class="flex items-center gap-2 mb-2">
+                        <span class="w-2 h-2 bg-green-400 rounded-full animate-pulse"></span>
+                        <span class="text-[10px] font-black text-indigo-100 uppercase tracking-widest">مباشر الآن</span>
+                    </div>
+
+                    <h2 id="current-class-name" class="text-2xl font-black text-white mb-1">تحميل...</h2>
+                    <p id="current-class-loc" class="text-indigo-100/70 text-xs font-bold mb-2">يتم فحص الجدول...</p>
+
+                    <!-- نوع المحاضرة (محاضرة / سكشن) + وقت متبقى -->
+                    <div class="flex items-center gap-3 mb-3">
+                      <div id="current-class-type" class="badge badge-neutral muted">--</div>
+                      <div id="current-class-timeleft" class="small muted">--</div>
+                    </div>
+
+                    <!-- المحاضرة الجاية -->
+                    <div class="glass p-3 rounded-2xl bg-white/6">
+                      <div class="flex justify-between items-center">
+                        <div>
+                          <div class="text-[11px] font-black text-slate-300">المحاضرة التالية</div>
+                          <div id="next-class-name" class="text-sm font-black text-white mt-1">--</div>
+                          <div id="next-class-loc" class="text-[11px] muted mt-1">--</div>
+                        </div>
+                        <div class="text-right">
+                          <div id="next-class-time" class="text-indigo-200 font-black">--</div>
+                          <div id="next-class-when" class="mt-2 task-badge bg-slate-800 text-slate-400">--</div>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div class="mt-4">
+                      <button onclick="window.location.href='2a.html'" class="w-full bg-white/10 hover:bg-white/20 backdrop-blur-md py-3 rounded-2xl text-xs font-black text-white border border-white/10 transition">
+                        عرض الجدول الدراسي الكامل 📅
+                      </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Tasks summary card -->
+            <div id="tasks-summary-card" class="glass p-4 rounded-2xl border border-white/5 mb-4">
+              <div class="flex items-center justify-between gap-4">
+                <div>
+                  <p class="text-[10px] font-black text-indigo-400 uppercase">المهام</p>
+                  <p id="tasks-count" class="text-white font-black text-2xl mt-1">--</p>
+                  <p id="next-task-name" class="text-slate-400 text-sm mt-1">--</p>
+                </div>
+
+                <div class="text-right">
+                  <div id="next-task-time" class="text-indigo-400 font-black">--</div>
+                  <div id="next-task-badge" class="mt-2 px-3 py-1 rounded-full text-[12px] bg-slate-800 text-slate-400">--</div>
+                  <button id="open-t1-btn" class="mt-3 bg-indigo-600 text-white px-4 py-2 rounded-2xl text-xs font-black">فتح صفحة المهام</button>
+                </div>
+              </div>
+            </div>
+
+            <!-- Today's schedule -->
+            <div class="space-y-4">
+                <div class="flex justify-between items-center px-1">
+                    <h3 class="text-sm font-black text-slate-400 uppercase tracking-widest">جدول اليوم (خاصة بقسمك)</h3>
+                    <span id="today-tag-list" class="text-[10px] bg-slate-800 px-2 py-1 rounded-md font-bold text-slate-500">السبت</span>
+                </div>
+
+                <div id="today-schedule-list" class="space-y-3"></div>
+            </div>
+        </section>
+
+        <!-- GPA tab (kept separate) -->
+        <section id="tab-gpa" class="tab-content space-y-6">
+            <div class="glass p-8 rounded-[2.5rem] text-center shadow-2xl">
+                <p class="text-[10px] font-black text-slate-400 uppercase mb-2">المعدل التراكمي المتوقع</p>
+                <div id="final-cgpa" class="text-6xl font-black text-white">0.00</div>
+                <div id="gpa-badge" class="mt-4 inline-block px-4 py-1 rounded-full bg-slate-800 text-slate-400 text-[10px] font-black italic">ادخل البيانات</div>
+            </div>
+
+            <div class="space-y-4">
+                <div class="bg-white/5 p-6 rounded-[2rem] border border-white/5">
+                    <h3 class="text-xs font-black text-indigo-400 mb-4 uppercase">الترم الأول (المحقق)</h3>
+                    <div class="grid grid-cols-2 gap-4">
+                        <div class="space-y-2">
+                            <p class="text-[9px] text-slate-500 mr-2">المعدل (GPA)</p>
+                            <input id="t1-gpa" type="number" step="0.01" placeholder="0.00" class="w-full bg-slate-900 rounded-xl p-3 text-sm font-bold outline-none border border-white/5 focus:border-indigo-500">
+                        </div>
+                        <div class="space-y-2">
+                            <p class="text-[9px] text-slate-500 mr-2">عدد الساعات</p>
+                            <input id="t1-hours" type="number" placeholder="18" class="w-full bg-slate-900 rounded-xl p-3 text-sm font-bold outline-none border border-white/5 focus:border-indigo-500">
+                        </div>
+                    </div>
+                </div>
+
+                <div class="bg-indigo-500/5 p-6 rounded-[2rem] border border-indigo-500/10 space-y-6">
+                    <div class="flex justify-between items-center">
+                        <h3 class="text-xs font-black text-indigo-400 uppercase">توقع الترم الثاني</h3>
+                        <span id="t2-val" class="bg-indigo-600 text-white px-3 py-1 rounded-lg text-xs font-black shadow-lg shadow-indigo-500/20">3.00</span>
+                    </div>
+                    <input id="t2-slider" type="range" min="0" max="4" step="0.05" value="3" class="w-full">
+                    <div class="space-y-2">
+                        <p class="text-[9px] text-slate-500 mr-2 uppercase">ساعات الترم الحالي</p>
+                        <input id="t2-hours" type="number" placeholder="18" class="w-full bg-slate-900 rounded-xl p-3 text-sm font-bold outline-none border border-white/5 focus:border-indigo-500">
+                    </div>
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <nav class="fixed bottom-0 left-0 w-full glass border-t border-white/5 flex justify-around items-end p-2 pb-4 z-50">
+        <button onclick="openTab('tab-home')" class="nav-btn flex flex-col items-center gap-1 text-indigo-400">
+            <svg class="w-6 h-6" fill="currentColor" viewBox="0 0 24 24"><path d="M10 20v-6h4v6h5v-8h3L12 3 2 12h3v8z"/></svg>
+            <span class="text-[10px] font-bold">الرئيسية</span>
+        </button>
+        <button onclick="window.location.href='2a.html'" class="nav-btn flex flex-col items-center gap-1 text-slate-500">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z"/></svg>
+            <span class="text-[10px] font-bold">الجدول</span>
+        </button>
+        <button onclick="openTab('tab-gpa')" class="nav-btn flex flex-col items-center gap-1 text-slate-500">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 7h6m0 10v-3m-3 3h.01M9 17h.01M9 14h.01M12 14h.01M15 11h.01M12 11h.01M9 11h.01M7 21h10a2 2 0 002-2V5a2 2 0 00-2-2H7a2 2 0 00-2 2v14a2 2 0 002 2z"/></svg>
+            <span class="text-[10px] font-bold">الحاسبة</span>
+        </button>
+        <button onclick="window.location.href='t1.html'" class="nav-btn flex flex-col items-center gap-1 text-slate-500">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z"/></svg>
+            <span class="text-[10px] font-bold">المهام</span>
+        </button>
+    </nav>
+
+<script>
+    // ------------------------
+    // Configuration for user
+    // ------------------------
+    // أنت قلت: "انا ال سكشن 5.6" -> نطبق أن المستخدم في سكشن 5 و 6
+    const USER_SECTIONS = [5, 6];
+
+    // --- إدارة الصفحات ---
+    function openTab(tabId) {
+        document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+        document.querySelectorAll('.nav-btn').forEach(b => b.classList.replace('text-indigo-400', 'text-slate-500'));
+        
+        const target = document.getElementById(tabId);
+        if(target) target.classList.add('active');
+        
+        if(event && event.currentTarget) {
+            event.currentTarget.classList.replace('text-slate-500', 'text-indigo-400');
+        }
+        window.scrollTo(0,0);
+    }
+
+    // --- تحديث الساعة / التاريخ --- 
+    function updateClockElements() {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', hour12: true });
+      if(document.getElementById('live-time')) document.getElementById('live-time').innerText = timeStr;
+      if(document.getElementById('live-date')) document.getElementById('live-date').innerText = now.toLocaleDateString('ar-EG', { day:'numeric', month:'short' });
+      const dayArabic = now.toLocaleDateString('ar-EG', { weekday:'long' });
+      if(document.getElementById('today-tag')) document.getElementById('today-tag').innerText = dayArabic;
+      if(document.getElementById('today-tag-list')) document.getElementById('today-tag-list').innerText = dayArabic;
+    }
+
+    // ------------------------
+    // Schedule data (detailed per user's input)
+    // Entries can include `sections: [..]` to indicate which sections this entry applies to.
+    // If no `sections` field — it's a lecture open to everyone (مدرج).
+    // ------------------------
+    const scheduleData = {
+      "Saturday": [
+        // سكشن 1 & 2
+        { type: "سكشن", name: "تمارين فيزياء (معمل فيزياء أ) — م/ سلامة", time: "10:00 AM", end: "12:00 PM", loc: "معمل فيزياء أ", sections: [1,2] },
+        { type: "سكشن", name: "تمارين رياضيات — م/ إسماعيل", time: "12:00 PM", end: "02:00 PM", loc: "مدرج 513", sections: [1,2] },
+        { type: "سكشن", name: "تمارين رسم هندسي — م/ عمرو + م/ سعيد", time: "03:00 PM", end: "06:00 PM", loc: "ص 113", sections: [1,2] },
+
+        // سكشن 3 & 4
+        { type: "سكشن", name: "تمارين فيزياء (معمل فيزياء ب) — م/ مهنى", time: "10:00 AM", end: "12:00 PM", loc: "معمل فيزياء ب", sections: [3,4] },
+        { type: "سكشن", name: "تمارين رياضيات — م/ فدوى", time: "12:00 PM", end: "02:00 PM", loc: "مدرج 514", sections: [3,4] },
+        { type: "سكشن", name: "تمارين رسم هندسي — م/ محمد هاشم + م/ السعيد صلاح", time: "03:00 PM", end: "06:00 PM", loc: "ص 115", sections: [3,4] },
+
+        // سكشن 5 & 6  <-- انت هنا
+        { type: "سكشن", name: "تمارين رياضيات — م/ إسماعيل", time: "10:00 AM", end: "12:00 PM", loc: "مدرج 513", sections: [5,6] },
+        { type: "سكشن", name: "تمارين رسم هندسي — م/ عمرو + م/ سعيد", time: "12:00 PM", end: "03:00 PM", loc: "ص 113", sections: [5,6] },
+        { type: "سكشن", name: "تمارين فيزياء (معمل فيزياء أ) — م/ سلامة", time: "03:00 PM", end: "05:00 PM", loc: "معمل فيزياء أ", sections: [5,6] },
+
+        // سكشن 7 & 8
+        { type: "سكشن", name: "تمارين رياضيات — م/ فدوى", time: "10:00 AM", end: "12:00 PM", loc: "مدرج 514", sections: [7,8] },
+        { type: "سكشن", name: "تمارين رسم هندسي — م/ محمد هاشم + م/ السعيد صلاح", time: "12:00 PM", end: "03:00 PM", loc: "ص 115", sections: [7,8] },
+        { type: "سكشن", name: "تمارين فيزياء (معمل فيزياء ب) — م/ مهنى", time: "03:00 PM", end: "05:00 PM", loc: "معمل فيزياء ب", sections: [7,8] },
+
+        // سكشن 9 & 10
+        { type: "سكشن", name: "تمارين رسم هندسي — م/ عمرو + م/ سعيد", time: "09:00 AM", end: "12:00 PM", loc: "ص 113", sections: [9,10] },
+        { type: "سكشن", name: "تمارين فيزياء (معمل فيزياء أ) — م/ سلامة", time: "12:00 PM", end: "02:00 PM", loc: "معمل فيزياء أ", sections: [9,10] },
+        { type: "سكشن", name: "تمارين رياضيات — م/ إسماعيل", time: "02:00 PM", end: "04:00 PM", loc: "مدرج 513", sections: [9,10] },
+
+        // سكشن 11 & 12
+        { type: "سكشن", name: "تمارين رسم هندسي — م/ محمد هاشم + م/ السعيد صلاح", time: "09:00 AM", end: "12:00 PM", loc: "ص 115", sections: [11,12] },
+        { type: "سكشن", name: "تمارين فيزياء (معمل فيزياء ب) — م/ مهنى", time: "12:00 PM", end: "02:00 PM", loc: "معمل فيزياء ب", sections: [11,12] },
+        { type: "سكشن", name: "تمارين رياضيات — م/ فدوى", time: "02:00 PM", end: "04:00 PM", loc: "مدرج 514", sections: [11,12] }
+      ],
+
+      "Sunday": [
+        // all in مدرج 8 (محاضرات كلية الأهليه)
+        { type: "محاضرة", name: "رياضيات هندسية (2) — أ.م.د/ منال السيد", time: "09:00 AM", end: "11:00 AM", loc: "مدرج 8" },
+        { type: "محاضرة", name: "ميكانيكا هندسية (2) — أ.د/ زكريا عمارة", time: "11:00 AM", end: "01:00 PM", loc: "مدرج 8" },
+        { type: "محاضرة", name: "تاريخ الهندسة والتكنولوجيا — أ.د/ عبد الفتاح هليل", time: "01:00 PM", end: "02:00 PM", loc: "مدرج 8" },
+        { type: "تمارين",  name: "تمارين تاريخ الهندسة والتكنولوجيا — م/ سعيد قنديل", time: "02:00 PM", end: "03:00 PM", loc: "مدرج 8" }
+      ],
+
+      "Monday": [
+        { type: "محاضرة", name: "فيزياء هندسية (2) — أ.م.د/ أحمد سعيد عبد الرازق", time: "09:00 AM", end: "11:00 AM", loc: "مدرج 8" },
+        { type: "محاضرة", name: "لغة أجنبية فنية — د/ أحمد حسين سعيد", time: "11:00 AM", end: "12:00 PM", loc: "مدرج 8" },
+        { type: "تمارين",  name: "تمارين لغة أجنبية فنية — م/ محمد هاشم", time: "12:00 PM", end: "01:00 PM", loc: "مدرج 8" }
+      ],
+
+      "Tuesday": [
+        { type: "محاضرة", name: "مبادئ هندسة التصنيع — د/ ماجد مصطفى & د/ محمود مصباح", time: "11:00 AM", end: "01:00 PM", loc: "مدرج 8" },
+        { type: "محاضرة", name: "رسم هندسي وإسقاط (2) — د/ محمود مصباح & د/ ماجد مصطفى", time: "01:00 PM", end: "03:00 PM", loc: "مدرج 8" }
+      ],
+
+      "Wednesday": [
+        // Wednesday workshops & sections as provided (grouped by section pairs)
+        // سكشن 1 & 2
+        { type: "ورشة", name: "ورش مبادئ هندسة التصنيع — م/ محمد هاشم + م/ سعيد قنديل", time: "09:00 AM", end: "12:00 PM", loc: "الورش", sections: [1,2] },
+        { type: "تمارين", name: "تمارين ميكانيكا هندسية 2 — ص (113) — م/ محمود سيف", time: "01:00 PM", end: "03:00 PM", loc: "ص 113", sections: [1,2] },
+
+        // سكشن 3 & 4
+        { type: "ورشة", name: "ورش مبادئ هندسة التصنيع — م/ السعيد صلاح + م/ محمد عمارة", time: "09:00 AM", end: "12:00 PM", loc: "الورش", sections: [3,4] },
+        { type: "تمارين", name: "تمارين ميكانيكا هندسية 2 — ص (115) — م/ أبانوب", time: "01:00 PM", end: "03:00 PM", loc: "ص 115", sections: [3,4] },
+
+        // سكشن 5 & 6
+        { type: "تمارين", name: "تمارين ميكانيكا هندسية 2 — ص (113) — م/ محمود سيف", time: "09:00 AM", end: "11:00 AM", loc: "ص 113", sections: [5,6] },
+        { type: "ورشة", name: "ورش مبادئ هندسة التصنيع — م/ محمد هاشم + م/ سعيد قنديل", time: "12:00 PM", end: "03:00 PM", loc: "الورش", sections: [5,6] },
+
+        // سكشن 7 & 8
+        { type: "تمارين", name: "تمارين ميكانيكا هندسية 2 — ص (115) — م/ أبانوب", time: "09:00 AM", end: "11:00 AM", loc: "ص 115", sections: [7,8] },
+        { type: "ورشة", name: "ورش مبادئ هندسة التصنيع — م/ السعيد صلاح + م/ محمد عمارة", time: "12:00 PM", end: "03:00 PM", loc: "الورش", sections: [7,8] },
+
+        // سكشن 9 & 10
+        { type: "تمارين", name: "تمارين ميكانيكا هندسية 2 — ص (113) — م/ محمود سيف", time: "11:00 AM", end: "01:00 PM", loc: "ص 113", sections: [9,10] },
+        { type: "ورشة", name: "ورش مبادئ هندسة التصنيع — م/ محمد هاشم + م/ سعيد قنديل", time: "03:00 PM", end: "06:00 PM", loc: "الورش", sections: [9,10] },
+
+        // سكشن 11 & 12
+        { type: "تمارين", name: "تمارين ميكانيكا هندسية 2 — ص (115) — م/ أبانوب", time: "11:00 AM", end: "01:00 PM", loc: "ص 115", sections: [11,12] },
+        { type: "ورشة", name: "ورش مبادئ هندسة التصنيع — م/ السعيد صلاح + م/ محمد عمارة", time: "03:00 PM", end: "06:00 PM", loc: "الورش", sections: [11,12] }
+      ],
+
+      "Thursday": [],
+      "Friday": []
+    };
+
+    // ------------------------
+    // Utilities for time parsing and formatting
+    // ------------------------
+    function parseTimeToDate(timeStr, referenceDate = new Date()){
+      const parts = timeStr.trim().split(' ');
+      if(parts.length < 2){
+        // HH:MM fallback (24h)
+        const [hh, mm] = timeStr.split(':').map(x=>parseInt(x,10));
+        const d = new Date(referenceDate);
+        if(!isNaN(hh)) d.setHours(hh, isNaN(mm)?0:mm, 0, 0);
+        return d;
+      }
+      const timePart = parts[0];
+      const modifier = parts[1].toUpperCase();
+      const [hhStr, mmStr] = timePart.split(':');
+      let hh = parseInt(hhStr,10) || 0;
+      const mm = parseInt(mmStr,10) || 0;
+      if(modifier === 'PM' && hh < 12) hh += 12;
+      if(modifier === 'AM' && hh === 12) hh = 0;
+      const d = new Date(referenceDate);
+      d.setHours(hh, mm, 0, 0);
+      return d;
+    }
+
+    function formatRemainingMs(ms){
+      if(ms <= 0) return 'الوقت بدأ أو انتهى';
+      const totalMin = Math.floor(ms / (1000 * 60));
+      const days = Math.floor(totalMin / (60*24));
+      const hours = Math.floor((totalMin % (60*24)) / 60);
+      const mins = totalMin % 60;
+      if(days > 0) return `باقي ${days}ي ${hours}س`;
+      if(hours > 0) return `باقي ${hours}س ${mins}د`;
+      return `باقي ${mins} د`;
+    }
+
+    function getColorLabelForHours(hours){
+      if(isNaN(hours)) return { label: '--', className: 'bg-slate-800 text-slate-400' };
+      if(hours <= 36) return { label: 'قريب جداً', className: 'bg-red-600 text-white' };
+      if(hours <= (24*5)) return { label: 'قريب', className: 'bg-yellow-500 text-black' };
+      return { label: 'مطمئن', className: 'bg-emerald-500 text-black' };
+    }
+
+    // helper: intersection
+    function intersects(a, b){
+      return a.some(v => b.includes(v));
+    }
+
+    // ------------------------
+    // Main dashboard update: show only entries relevant to USER_SECTIONS + common lectures
+    // ------------------------
+    function updateDashboard() {
+        updateClockElements();
+        const now = new Date();
+        const days = ["Sunday", "Monday", "Tuesday", "Wednesday", "Thursday", "Friday", "Saturday"];
+        const dayName = days[now.getDay()];
+        const rawList = (scheduleData[dayName] || []).slice(); // copy
+
+        // filter: keep entries that either have no sections (lectures) OR whose sections intersect user's sections
+        const todayClasses = rawList.filter(item => {
+          if(!item.sections) return true; // common lecture
+          try {
+            return intersects(item.sections, USER_SECTIONS);
+          } catch(e) {
+            return false;
+          }
+        });
+
+        // sort by start time
+        todayClasses.sort((a,b) => parseTimeToDate(a.time) - parseTimeToDate(b.time));
+
+        // find current class: now within [start, end)
+        let currentIndex = -1;
+        for(let i=0;i<todayClasses.length;i++){
+          const c = todayClasses[i];
+          const start = parseTimeToDate(c.time);
+          const end = parseTimeToDate(c.end);
+          if(now >= start && now < end){
+            currentIndex = i;
+            break;
+          }
+        }
+
+        const current = currentIndex >= 0 ? todayClasses[currentIndex] : null;
+        // find next:
+        let next = null;
+        if(currentIndex >= 0){
+          if(currentIndex + 1 < todayClasses.length) next = todayClasses[currentIndex + 1];
+        } else {
+          // first class that starts in future
+          next = todayClasses.find(c => parseTimeToDate(c.time) > now) || null;
+        }
+
+        // update Now playing fields
+        const curNameEl = document.getElementById('current-class-name');
+        const curLocEl = document.getElementById('current-class-loc');
+        const curTypeEl = document.getElementById('current-class-type');
+        const curTimeLeftEl = document.getElementById('current-class-timeleft');
+
+        if(current){
+          if(curNameEl) curNameEl.innerText = current.name;
+          if(curLocEl) curLocEl.innerText = `📍 ${current.loc}`;
+          if(curTypeEl) {
+            const typeLabel = current.type === 'سكشن' ? 'سكشن (كلية الهندسة)' : (current.type === 'محاضرة' ? 'محاضرة (مدرج)' : current.type);
+            curTypeEl.innerText = typeLabel;
+            // choose badge class
+            curTypeEl.className = current.type === 'سكشن' ? 'badge badge-section' : (current.type === 'محاضرة' ? 'badge badge-lecture' : 'badge badge-neutral');
+          }
+          // remaining time until end
+          const end = parseTimeToDate(current.end);
+          const remMs = end - now;
+          if(curTimeLeftEl) curTimeLeftEl.innerText = formatRemainingMs(remMs);
+        } else {
+          if(curNameEl) curNameEl.innerText = "وقت مراجعة حرة";
+          if(curLocEl) curLocEl.innerText = "لا يوجد محاضرات حالياً";
+          if(curTypeEl) { curTypeEl.innerText = ''; curTypeEl.className = 'badge badge-neutral'; }
+          if(curTimeLeftEl) curTimeLeftEl.innerText = '';
+        }
+
+        // update Next class block
+        const nextNameEl = document.getElementById('next-class-name');
+        const nextLocEl = document.getElementById('next-class-loc');
+        const nextTimeEl = document.getElementById('next-class-time');
+        const nextWhenEl = document.getElementById('next-class-when');
+
+        if(next){
+          if(nextNameEl) nextNameEl.innerText = next.name;
+          if(nextLocEl) nextLocEl.innerText = next.loc;
+          if(nextTimeEl) {
+            const start = parseTimeToDate(next.time);
+            nextTimeEl.innerText = start.toLocaleTimeString('en-GB', { hour: '2-digit', minute: '2-digit' });
+          }
+          const start = parseTimeToDate(next.time);
+          const remMs = start - now;
+          if(nextWhenEl) nextWhenEl.innerText = (remMs <= 0) ? 'بتبدأ الآن' : formatRemainingMs(remMs);
+          // badge color for next
+          const hoursLeft = remMs / (1000*60*60);
+          const color = getColorLabelForHours(hoursLeft);
+          if(nextWhenEl) {
+            nextWhenEl.className = `mt-2 task-badge ${color.className}`;
+          }
+        } else {
+          // no next today
+          if(nextNameEl) nextNameEl.innerText = 'مفيش محاضرات تاني النهارده';
+          if(nextLocEl) nextLocEl.innerText = '';
+          if(nextTimeEl) nextTimeEl.innerText = '';
+          if(nextWhenEl) { nextWhenEl.innerText = ''; nextWhenEl.className = 'mt-2 task-badge bg-slate-800 text-slate-400'; }
+        }
+
+        // render today's schedule list with markings for current / next
+        const listContainer = document.getElementById('today-schedule-list');
+        if(listContainer){
+          if(todayClasses.length === 0){
+            listContainer.innerHTML = `<p class="text-center text-slate-600 py-10 text-xs font-bold">لا يوجد محاضرات/سكاشن لقسمك اليوم</p>`;
+          } else {
+            listContainer.innerHTML = todayClasses.map((c,i) => {
+              const start = parseTimeToDate(c.time);
+              const end = parseTimeToDate(c.end);
+              let itemClass = '';
+              let badgeHtml = '';
+              // identify by exact start time+name to avoid collisions
+              const isCurrent = current && (current.name === c.name) && (parseTimeToDate(current.time).getTime() === start.getTime());
+              const isNext = next && (next.name === c.name) && (parseTimeToDate(next.time).getTime() === start.getTime());
+
+              if(isCurrent){
+                itemClass = 'table-item-current';
+                badgeHtml = `<span class="badge-current badge">الحالية</span>`;
+              } else if(isNext){
+                itemClass = 'table-item-next';
+                badgeHtml = `<span class="badge-next badge">التالية</span>`;
+              } else {
+                badgeHtml = (c.type === 'سكشن') ? `<span class="badge badge-section">سكشن</span>` : `<span class="badge badge-lecture">محاضرة</span>`;
+              }
+
+              // If entry has sections, display which sections (helpful)
+              const secInfo = c.sections ? `<div class="text-[11px] muted mt-1">سكاشن: ${c.sections.join('، ')}</div>` : '';
+
+              return `
+                <div class="glass p-4 rounded-3xl flex items-center justify-between mb-3 ${itemClass}">
+                  <div class="flex items-center gap-4" style="max-width:70%">
+                    <div class="w-10 h-10 rounded-2xl bg-white/5 flex items-center justify-center text-lg">
+                      ${c.type === 'محاضرة' ? '👨‍🏫' : (c.type === 'سكشن' ? '🧑‍🔬' : '📝')}
+                    </div>
+                    <div>
+                      <h4 class="text-sm font-black text-white">${c.name}</h4>
+                      <p class="text-[10px] muted font-bold">${c.loc} • ${c.type}</p>
+                      ${secInfo}
+                    </div>
+                  </div>
+                  <div class="text-right flex flex-col items-end gap-1">
+                    <p class="text-[10px] font-black text-indigo-400">${c.time} - ${c.end}</p>
+                    ${badgeHtml}
+                  </div>
+                </div>
+              `;
+            }).join('');
+          }
+        }
+    }
+
+    // ------------------------
+    // GPA engine (unchanged)
+    // ------------------------
+    function calculateGPA() {
+        const t1G = parseFloat(document.getElementById('t1-gpa')?.value) || 0;
+        const t1H = parseFloat(document.getElementById('t1-hours')?.value) || 0;
+        const t2G = parseFloat(document.getElementById('t2-slider')?.value) || 0;
+        const t2H = parseFloat(document.getElementById('t2-hours')?.value) || 0;
+        if(document.getElementById('t2-val')) document.getElementById('t2-val').innerText = t2G.toFixed(2);
+        const res = (t1H + t2H) > 0 ? (((t1G * t1H) + (t2G * t2H)) / (t1H + t2H)).toFixed(2) : "0.00";
+        if(document.getElementById('final-cgpa')) document.getElementById('final-cgpa').innerText = res;
+    }
+
+    // ------------------------
+    // Tasks summary widget (reads from t1.html storage)
+    // ------------------------
+    (function TasksSummaryWidget(){
+      const STORAGE_KEY = 'eng_tasks_v_final';
+
+      function safeParse(raw){
+        try { return JSON.parse(raw) || []; }
+        catch(e){ return []; }
+      }
+
+      function readTasks(){
+        const raw = localStorage.getItem(STORAGE_KEY);
+        if(!raw) return [];
+        return safeParse(raw);
+      }
+
+      function getNextTask(tasks){
+        if(!tasks || tasks.length === 0) return null;
+        const now = new Date();
+        const future = tasks.filter(t => {
+          try { return new Date(t.date) > now; } catch(e){ return false; }
+        });
+        if(future.length > 0){
+          future.sort((a,b) => new Date(a.date) - new Date(b.date));
+          return future[0];
+        }
+        const allSorted = tasks.slice().sort((a,b) => new Date(a.date) - new Date(b.date));
+        return allSorted[0] || null;
+      }
+
+      function getColorForTask(dateStr){
+        const diffH = (new Date(dateStr) - new Date()) / (1000 * 60 * 60);
+        if(isNaN(diffH)) return { label: '--', cls: 'bg-slate-800 text-slate-400' };
+        if(diffH <= 36) return { label: 'قريب جداً', cls: 'bg-red-600 text-white' };
+        if(diffH <= (24 * 5)) return { label: 'قريب', cls: 'bg-yellow-500 text-black' };
+        return { label: 'مطمئن', cls: 'bg-emerald-500 text-black' };
+      }
+
+      function render(){
+        const cntEl = document.getElementById('tasks-count');
+        const nameEl = document.getElementById('next-task-name');
+        const timeEl = document.getElementById('next-task-time');
+        const badgeEl = document.getElementById('next-task-badge');
+        if(!cntEl || !nameEl || !timeEl || !badgeEl) return;
+        const tasks = readTasks();
+        cntEl.innerText = tasks.length || 0;
+        if(tasks.length === 0){
+          nameEl.innerText = 'مفيش مهام حالياً 👌';
+          timeEl.innerText = '';
+          badgeEl.innerText = '';
+          badgeEl.className = 'mt-2 px-3 py-1 rounded-full text-[12px] bg-slate-800 text-slate-400';
+          return;
+        }
+        const next = getNextTask(tasks);
+        if(!next){
+          nameEl.innerText = 'لا توجد مهام قابلة للعرض';
+          timeEl.innerText = '';
+          badgeEl.innerText = '';
+          badgeEl.className = 'mt-2 px-3 py-1 rounded-full text-[12px] bg-slate-800 text-slate-400';
+          return;
+        }
+        nameEl.innerText = next.name || 'بدون عنوان';
+        try {
+          timeEl.innerText = new Date(next.date).toLocaleString('ar-EG', { day:'numeric', month:'short', hour:'2-digit', minute:'2-digit' });
+        } catch(e) {
+          timeEl.innerText = next.date || '--';
+        }
+        const color = getColorForTask(next.date);
+        badgeEl.innerText = color.label;
+        badgeEl.className = `mt-2 px-3 py-1 rounded-full text-[12px] ${color.cls}`;
+      }
+
+      const openBtn = document.getElementById('open-t1-btn');
+      if(openBtn) openBtn.addEventListener('click', () => { window.location.href = 't1.html'; });
+
+      render();
+      setInterval(render, 60 * 1000);
+    })();
+
+    // ------------------------
+    // Initialization on load
+    // ------------------------
+    window.onload = function() {
+        // GPA listeners
+        ['t1-gpa', 't1-hours', 't2-slider', 't2-hours'].forEach(id => {
+            const el = document.getElementById(id);
+            if(el) el.addEventListener('input', calculateGPA);
+        });
+        // initial render
+        updateDashboard();
+        // update dashboard every second for accurate "current time left" (kept responsive)
+        setInterval(updateDashboard, 1000);
+    };
+</script>
+
+</body>
+</html>
