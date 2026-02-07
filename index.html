@@ -604,7 +604,13 @@
         // update dashboard every second for accurate "current time left" (kept responsive)
         setInterval(updateDashboard, 1000);
     };
+   
+if ('serviceWorker' in navigator) {
+  navigator.serviceWorker.register('service-worker.js');
+}
+
 </script>
 
 </body>
 </html>
+
